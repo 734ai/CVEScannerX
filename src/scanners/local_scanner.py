@@ -2,8 +2,10 @@
 
 import json
 import subprocess
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Callable
 from ..utils.logger import get_logger
+from ..utils.parallel import run_parallel
+from ..utils.progress import ScanProgress
 
 logger = get_logger(__name__)
 
@@ -66,6 +68,15 @@ class LocalScanner:
             logger.error(f"Failed to parse ports output: {e}")
             raise
 
+    def _get_scan_function(self, scan_type: str) -> Tuple[Callable, str]:
+        """Get the scan function and description for a scan type."""
+        scan_functions = {
+            'packages': (self.scan_packages, "Scanning installed packages"),
+            'services': (self.scan_services, "Scanning running services"),
+            'ports': (self.scan_ports, "Scanning open ports")
+        }
+        return scan_functions.get(scan_type, (None, ""))
+
     def scan(self) -> Dict:
         """Perform a complete local system scan."""
         results = {
@@ -74,11 +85,25 @@ class LocalScanner:
             'scans': {}
         }
 
-        if 'packages' in self.scan_types:
-            results['scans']['packages'] = self.scan_packages()
-        if 'services' in self.scan_types:
-            results['scans']['services'] = self.scan_services()
-        if 'ports' in self.scan_types:
-            results['scans']['ports'] = self.scan_ports()
+        with ScanProgress("Scanning local system") as progress:
+            # Filter enabled scan types
+            enabled_scans = [(t, *self._get_scan_function(t)) 
+                           for t in self.scan_types 
+                           if t in ['packages', 'services', 'ports']]
+            
+            progress.update(description=f"Starting {len(enabled_scans)} scan types...")
+            
+            # Run scans in parallel
+            scan_results = run_parallel(
+                lambda x: (x[0], x[1]()), 
+                enabled_scans,
+                max_workers=len(enabled_scans)
+            )
+            
+            # Process results
+            for scan_type, result in scan_results:
+                results['scans'][scan_type] = result
+            
+            progress.update(description="Scan complete!")
 
         return results

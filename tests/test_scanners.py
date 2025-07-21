@@ -67,3 +67,38 @@ def test_remote_scanner_args(remote_scanner):
     assert "-sV" in args  # Service version detection
     assert "-O" in args   # OS detection
     assert "-p" in args   # Port specification
+
+def test_remote_scanner_parallel(remote_scanner):
+    """Test parallel scanning of multiple targets."""
+    targets = ["192.168.1.1", "192.168.1.2", "192.168.1.3"]
+    with patch('nmap.PortScanner') as mock_scanner:
+        mock_scanner.return_value.scan.return_value = {
+            'nmap': {
+                'scanstats': {
+                    'timestr': '2025-07-20 12:00:00',
+                }
+            }
+        }
+        mock_scanner.return_value.all_hosts.return_value = targets
+        
+        result = remote_scanner.scan(targets)
+        
+        assert result['total_scanned'] == len(targets)
+        assert result['successful_scans'] == len(targets)
+        assert len(result['results']) == len(targets)
+        
+def test_local_scanner_parallel(local_scanner):
+    """Test parallel execution of local scans."""
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            stdout='{"data": []}',
+            stderr='',
+            returncode=0
+        )
+        
+        result = local_scanner.scan()
+        
+        assert isinstance(result, dict)
+        assert 'scans' in result
+        for scan_type in local_scanner.scan_types:
+            assert scan_type in result['scans']
