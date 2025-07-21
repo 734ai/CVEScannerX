@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVEScannerX Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .scan-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .severity-high {
+            color: #d32f2f;
+        }
+        .severity-medium {
+            color: #f57c00;
+        }
+        .severity-low {
+            color: #388e3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CVEScannerX Scan Report</h1>
+        
+        <div class="scan-info">
+            <h2>Scan Information</h2>
+            <p><strong>Target:</strong> {{ target }}</p>
+            <p><strong>Scan Date:</strong> {{ scan_date }}</p>
+            <p><strong>Scan Type:</strong> {{ scan_type }}</p>
+        </div>
+
+        {% if vulnerabilities %}
+        <h2>Discovered Vulnerabilities</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>CVE ID</th>
+                    <th>Severity</th>
+                    <th>Description</th>
+                    <th>Known Exploits</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vuln in vulnerabilities %}
+                <tr>
+                    <td>{{ vuln.cve_id }}</td>
+                    <td class="severity-{{ vuln.severity | lower }}">{{ vuln.severity }}</td>
+                    <td>{{ vuln.description }}</td>
+                    <td>
+                        {% if vuln.exploits %}
+                            <ul>
+                            {% for exploit in vuln.exploits %}
+                                <li>{{ exploit.title }}</li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            No known exploits
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No vulnerabilities were discovered during the scan.</p>
+        {% endif %}
+
+        {% if additional_info %}
+        <h2>Additional Information</h2>
+        <pre>{{ additional_info | tojson(indent=2) }}</pre>
+        {% endif %}
+    </div>
+</body>
+</html>

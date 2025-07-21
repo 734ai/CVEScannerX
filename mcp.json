@@ -1,0 +1,124 @@
+{
+    "project": {
+        "name": "CVEScannerX",
+        "version": "1.0.0",
+        "description": "Advanced CVE scanning tool for Kali Linux",
+        "author": "734ai",
+        "license": "MIT",
+        "repository": {
+            "type": "git",
+            "url": "https://github.com/734ai/CVEScannerX.git"
+        }
+    },
+    "runtime": {
+        "main": "src/cvescannerx.py",
+        "requirements": {
+            "python": ">=3.8.0",
+            "system": {
+                "nmap": "latest",
+                "exploitdb": "latest",
+                "debsecan": "latest",
+                "wkhtmltopdf": "latest"
+            }
+        },
+        "environment": {
+            "required_env_vars": [
+                "SHODAN_API_KEY",
+                "VULNERS_API_KEY",
+                "SECURITYTRAILS_API_KEY",
+                "NVD_API_KEY"
+            ]
+        }
+    },
+    "api_config": {
+        "nvd": {
+            "base_url": "https://services.nvd.nist.gov/rest/json/",
+            "version": "2.0",
+            "rate_limit": {
+                "requests_per_second": 6,
+                "burst": 10
+            }
+        },
+        "vulners": {
+            "base_url": "https://vulners.com/api/v3/",
+            "rate_limit": {
+                "requests_per_minute": 10,
+                "burst": 15
+            }
+        },
+        "shodan": {
+            "base_url": "https://api.shodan.io/",
+            "rate_limit": {
+                "requests_per_second": 1,
+                "credits_per_query": 1
+            }
+        },
+        "securitytrails": {
+            "base_url": "https://api.securitytrails.com/v1/",
+            "rate_limit": {
+                "requests_per_month": 50,
+                "requests_per_second": 5
+            }
+        }
+    },
+    "features": {
+        "scanning": {
+            "local": {
+                "enabled": true,
+                "requires_sudo": true,
+                "scan_types": ["packages", "services", "ports"],
+                "default_options": {
+                    "include_fixes": true,
+                    "scan_interval": 86400
+                }
+            },
+            "remote": {
+                "enabled": true,
+                "default_ports": "1-1000",
+                "timeout": 300,
+                "max_retries": 3,
+                "options": {
+                    "service_detection": true,
+                    "os_detection": true,
+                    "script_scan": false
+                }
+            }
+        },
+        "reporting": {
+            "formats": ["json", "html", "pdf"],
+            "default_format": "json",
+            "html_template": "src/templates/report.html",
+            "output_directory": "reports",
+            "naming_pattern": "{target}_{timestamp}_{type}"
+        }
+    },
+    "cache": {
+        "enabled": true,
+        "settings": {
+            "directory": ".cache",
+            "max_age": 86400,
+            "max_size": "500MB",
+            "compression": true
+        },
+        "types": {
+            "api_responses": {
+                "enabled": true,
+                "ttl": 3600
+            },
+            "scan_results": {
+                "enabled": true,
+                "ttl": 86400
+            }
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "output": {
+            "file": "logs/cvescannerx.log",
+            "max_size": "10MB",
+            "backup_count": 5,
+            "console": true
+        }
+    }
+}
