@@ -4,6 +4,7 @@ import time
 import requests
 from typing import Dict, Optional
 from ..utils.logger import get_logger
+from ..utils.rate_limiter import RateLimiter
 
 logger = get_logger(__name__)
 
@@ -16,8 +17,14 @@ class NVDClient:
         self.base_url = self.config['base_url']
         self.version = self.config['version']
         self.api_key = None
-        self.last_request_time = 0
-        self.min_request_interval = 1.0 / self.config['rate_limit']['requests_per_second']
+        
+        # Initialize rate limiter
+        self.rate_limiter = RateLimiter()
+        self.rate_limiter.add_limiter(
+            'nvd',
+            rate=self.config['rate_limit']['requests_per_second'],
+            burst=self.config['rate_limit'].get('burst', 10)
+        )
 
     def set_api_key(self, api_key: str) -> None:
         """Set the API key for NVD API access."""
@@ -25,11 +32,7 @@ class NVDClient:
 
     def _rate_limit(self) -> None:
         """Implement rate limiting for API requests."""
-        current_time = time.time()
-        elapsed = current_time - self.last_request_time
-        if elapsed < self.min_request_interval:
-            time.sleep(self.min_request_interval - elapsed)
-        self.last_request_time = time.time()
+        self.rate_limiter.wait('nvd')
 
     def get_cve(self, cve_id: str) -> Dict:
         """Fetch details for a specific CVE."""

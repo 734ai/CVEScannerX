@@ -3,50 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CVEScannerX Report</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1, h2 {
-            color: #333;
-        }
-        .scan-info {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .severity-high {
-            color: #d32f2f;
-        }
-        .severity-medium {
-            color: #f57c00;
-        }
-        .severity-low {
-            color: #388e3c;
-        }
-    </style>
+    <title>CVEScannerX Report - {{ target }}</title>
+    <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
     <div class="container">
@@ -55,49 +13,99 @@
         <div class="scan-info">
             <h2>Scan Information</h2>
             <p><strong>Target:</strong> {{ target }}</p>
-            <p><strong>Scan Date:</strong> {{ scan_date }}</p>
+            <p><strong>Scan Date:</strong> {{ scan_date | format_date }}</p>
             <p><strong>Scan Type:</strong> {{ scan_type }}</p>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>{{ stats.total }}</h3>
+                <p>Total Vulnerabilities</p>
+            </div>
+            {% for severity, count in stats.by_severity.items() %}
+            {% if count > 0 %}
+            <div class="stat-card">
+                <h3 style="color: {{ severity | severity_color }}">{{ count }}</h3>
+                <p>{{ severity }} Severity</p>
+            </div>
+            {% endif %}
+            {% endfor %}
         </div>
 
         {% if vulnerabilities %}
         <h2>Discovered Vulnerabilities</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>CVE ID</th>
-                    <th>Severity</th>
-                    <th>Description</th>
-                    <th>Known Exploits</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for vuln in vulnerabilities %}
-                <tr>
-                    <td>{{ vuln.cve_id }}</td>
-                    <td class="severity-{{ vuln.severity | lower }}">{{ vuln.severity }}</td>
-                    <td>{{ vuln.description }}</td>
-                    <td>
-                        {% if vuln.exploits %}
-                            <ul>
-                            {% for exploit in vuln.exploits %}
-                                <li>{{ exploit.title }}</li>
-                            {% endfor %}
-                            </ul>
-                        {% else %}
-                            No known exploits
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="vulnerability-table-container">
+            <table class="vulnerability-table">
+                <thead>
+                    <tr>
+                        <th>CVE ID</th>
+                        <th>Severity</th>
+                        <th>CVSS Score</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vuln in vulnerabilities %}
+                    <tr>
+                        <td><strong>{{ vuln.cve_id }}</strong></td>
+                        <td>
+                            <span class="severity-badge severity-{{ vuln.severity }}">
+                                {{ vuln.severity }}
+                            </span>
+                        </td>
+                        <td>{{ "%.1f"|format(vuln.cvss_score) if vuln.cvss_score else "N/A" }}</td>
+                        <td>{{ vuln.description[:200] + '...' if vuln.description|length > 200 else vuln.description }}</td>
+                        <td>{{ vuln.status | default('Unpatched', true) }}</td>
+                    </tr>
+                    {% if vuln.exploits or vuln.references %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="details-section">
+                                {% if vuln.exploits %}
+                                <h4>Known Exploits</h4>
+                                <ul class="exploits-list">
+                                    {% for exploit in vuln.exploits %}
+                                    <li class="exploit-item">
+                                        <strong>{{ exploit.title }}</strong><br>
+                                        Type: {{ exploit.type }}<br>
+                                        Platform: {{ exploit.platform }}<br>
+                                        {% if exploit.reliability %}
+                                        Reliability: {{ exploit.reliability }}<br>
+                                        {% endif %}
+                                        Date: {{ exploit.date | default('Unknown', true) }}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                                
+                                {% if vuln.references %}
+                                <h4>References</h4>
+                                <ul>
+                                    {% for ref in vuln.references %}
+                                    <li><a href="{{ ref.url }}">{{ ref.source }}: {{ ref.title }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <p>No vulnerabilities were discovered during the scan.</p>
+        <div class="scan-info">
+            <p>No vulnerabilities were discovered during the scan.</p>
+        </div>
         {% endif %}
 
-        {% if additional_info %}
+        {% if raw_data %}
         <h2>Additional Information</h2>
-        <pre>{{ additional_info | tojson(indent=2) }}</pre>
+        <div class="details-section">
+            <pre><code>{{ raw_data | tojson(indent=2) }}</code></pre>
+        </div>
         {% endif %}
     </div>
 </body>
